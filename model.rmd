@@ -1,0 +1,11 @@
+---
+title: "Longitudinal Binary Model"
+output: html_document
+---
+
+## Model Setup
+
+Random intercept model. For subject i’s jth observation, the random intercept model is defined as:
+
+$$y_{ij} = \beta_0 + \beta_1x_{ij} + u_i + \epsilon_{ij}$$
+
