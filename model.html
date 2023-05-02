@@ -172,10 +172,174 @@ pre code {
 </div>
 
 
+<div id="description-of-data-and-research-question" class="section level2">
+<h2>Description of Data and Research Question</h2>
+<p>The data comes from user fitbit data and includes variables such as step count, time spent in different activity levels, and sleep. The user is identified by a unique ID and is repeatedly observed across time (in days). The research question is:</p>
+<blockquote>
+<p>to determine if the number of steps taken by a user is related to whether or not they slept more than 7 hours that night.</p>
+</blockquote>
+<p>This is a longitudinal binary model because the response variable is binary (slept more than 7 hours or not) and the data is longitudinal (repeated observations across time). The prediction will be a probability of sleeping more than 7 hours.</p>
+<p>We will include a random intercept for each individual to account for the individual’s “baseline” probability of sleeping more than 7 hours.</p>
+<div id="data-exploration" class="section level3">
+<h3>Data Exploration</h3>
+<pre class="r"><code>activity_data &lt;- read.csv(&quot;data/Fitabase Data 4.12.16-5.12.16/dailyActivity_merged.csv&quot;)
+sleep_data &lt;- read.csv(&quot;data/Fitabase Data 4.12.16-5.12.16/sleepDay_merged.csv&quot;)
+
+activity_data$ActivityDate &lt;- as.Date(activity_data$ActivityDate, format = &quot;%m/%d/%Y&quot;)
+
+# calculate the sleep binary for each day
+sleep_data$sleep_binary &lt;- ifelse(sleep_data$TotalMinutesAsleep &gt; 7*60, 1, 0)
+# cast the SleepDay to date from datetime and name ActivityDate
+# first from char to datetime
+sleep_data$SleepDay &lt;- as.POSIXct(sleep_data$SleepDay, format = &quot;%m/%d/%Y %I:%M:%S %p&quot;)
+# then from datetime to date
+sleep_data$ActivityDate &lt;- as.Date(sleep_data$SleepDay)
+
+print(str(activity_data))</code></pre>
+<pre><code>## &#39;data.frame&#39;:    940 obs. of  15 variables:
+##  $ Id                      : num  1.5e+09 1.5e+09 1.5e+09 1.5e+09 1.5e+09 ...
+##  $ ActivityDate            : Date, format: &quot;2016-04-12&quot; &quot;2016-04-13&quot; ...
+##  $ TotalSteps              : int  13162 10735 10460 9762 12669 9705 13019 15506 10544 9819 ...
+##  $ TotalDistance           : num  8.5 6.97 6.74 6.28 8.16 ...
+##  $ TrackerDistance         : num  8.5 6.97 6.74 6.28 8.16 ...
+##  $ LoggedActivitiesDistance: num  0 0 0 0 0 0 0 0 0 0 ...
+##  $ VeryActiveDistance      : num  1.88 1.57 2.44 2.14 2.71 ...
+##  $ ModeratelyActiveDistance: num  0.55 0.69 0.4 1.26 0.41 ...
+##  $ LightActiveDistance     : num  6.06 4.71 3.91 2.83 5.04 ...
+##  $ SedentaryActiveDistance : num  0 0 0 0 0 0 0 0 0 0 ...
+##  $ VeryActiveMinutes       : int  25 21 30 29 36 38 42 50 28 19 ...
+##  $ FairlyActiveMinutes     : int  13 19 11 34 10 20 16 31 12 8 ...
+##  $ LightlyActiveMinutes    : int  328 217 181 209 221 164 233 264 205 211 ...
+##  $ SedentaryMinutes        : int  728 776 1218 726 773 539 1149 775 818 838 ...
+##  $ Calories                : int  1985 1797 1776 1745 1863 1728 1921 2035 1786 1775 ...
+## NULL</code></pre>
+<pre class="r"><code>print(str(sleep_data))</code></pre>
+<pre><code>## &#39;data.frame&#39;:    413 obs. of  7 variables:
+##  $ Id                : num  1.5e+09 1.5e+09 1.5e+09 1.5e+09 1.5e+09 ...
+##  $ SleepDay          : POSIXct, format: &quot;2016-04-12&quot; &quot;2016-04-13&quot; ...
+##  $ TotalSleepRecords : int  1 2 1 2 1 1 1 1 1 1 ...
+##  $ TotalMinutesAsleep: int  327 384 412 340 700 304 360 325 361 430 ...
+##  $ TotalTimeInBed    : int  346 407 442 367 712 320 377 364 384 449 ...
+##  $ sleep_binary      : num  0 0 0 0 1 0 0 0 0 1 ...
+##  $ ActivityDate      : Date, format: &quot;2016-04-12&quot; &quot;2016-04-13&quot; ...
+## NULL</code></pre>
+<p>We join the data.</p>
+<pre class="r"><code># join the data on ActivityDate and Id
+data &lt;- merge(
+    activity_data,
+    sleep_data,
+    by = c(&quot;Id&quot;, &quot;ActivityDate&quot;)
+)
+
+print(str(data))</code></pre>
+<pre><code>## &#39;data.frame&#39;:    413 obs. of  20 variables:
+##  $ Id                      : num  1.5e+09 1.5e+09 1.5e+09 1.5e+09 1.5e+09 ...
+##  $ ActivityDate            : Date, format: &quot;2016-04-12&quot; &quot;2016-04-13&quot; ...
+##  $ TotalSteps              : int  13162 10735 9762 12669 9705 15506 10544 9819 14371 10039 ...
+##  $ TotalDistance           : num  8.5 6.97 6.28 8.16 6.48 ...
+##  $ TrackerDistance         : num  8.5 6.97 6.28 8.16 6.48 ...
+##  $ LoggedActivitiesDistance: num  0 0 0 0 0 0 0 0 0 0 ...
+##  $ VeryActiveDistance      : num  1.88 1.57 2.14 2.71 3.19 ...
+##  $ ModeratelyActiveDistance: num  0.55 0.69 1.26 0.41 0.78 ...
+##  $ LightActiveDistance     : num  6.06 4.71 2.83 5.04 2.51 ...
+##  $ SedentaryActiveDistance : num  0 0 0 0 0 0 0 0 0 0 ...
+##  $ VeryActiveMinutes       : int  25 21 29 36 38 50 28 19 41 39 ...
+##  $ FairlyActiveMinutes     : int  13 19 34 10 20 31 12 8 21 5 ...
+##  $ LightlyActiveMinutes    : int  328 217 209 221 164 264 205 211 262 238 ...
+##  $ SedentaryMinutes        : int  728 776 726 773 539 775 818 838 732 709 ...
+##  $ Calories                : int  1985 1797 1745 1863 1728 2035 1786 1775 1949 1788 ...
+##  $ SleepDay                : POSIXct, format: &quot;2016-04-12&quot; &quot;2016-04-13&quot; ...
+##  $ TotalSleepRecords       : int  1 2 1 2 1 1 1 1 1 1 ...
+##  $ TotalMinutesAsleep      : int  327 384 412 340 700 304 360 325 361 430 ...
+##  $ TotalTimeInBed          : int  346 407 442 367 712 320 377 364 384 449 ...
+##  $ sleep_binary            : num  0 0 0 0 1 0 0 0 0 1 ...
+## NULL</code></pre>
+<p>We display the count of observations for each idividual.</p>
+<pre class="r"><code>data %&gt;%
+    group_by(Id) %&gt;%
+    summarise(n = n()) %&gt;%
+    arrange(desc(n))</code></pre>
+<pre><code>## # A tibble: 24 x 2
+##            Id     n
+##         &lt;dbl&gt; &lt;int&gt;
+##  1 8378563200    32
+##  2 5553957443    31
+##  3 6962181067    31
+##  4 2026352035    28
+##  5 3977333714    28
+##  6 4445114986    28
+##  7 4702921684    28
+##  8 4319703577    26
+##  9 5577150313    26
+## 10 1503960366    25
+## # … with 14 more rows</code></pre>
+<p>We see that we do not have a uniform numer of observations for each individual.</p>
+</div>
+</div>
 <div id="model-setup" class="section level2">
 <h2>Model Setup</h2>
+<div id="random-intercept-model" class="section level3">
+<h3>Random Intercept Model</h3>
 <p>Random intercept model. For subject i’s jth observation, the random intercept model is defined as:</p>
 <p><span class="math display">\[y_{ij} = \beta_0 + \beta_1x_{ij} + u_i + \epsilon_{ij}\]</span></p>
+<p>where:</p>
+<ul>
+<li><span class="math inline">\(y_ij\)</span> is the probability of sleeping more than 7 hours for subject i on day j</li>
+<li><span class="math inline">\(x_{ij}\)</span> is the number of steps taken by subject i on day j</li>
+<li><span class="math inline">\(u_i\)</span> is the random intercept for subject i</li>
+<li><span class="math inline">\(\epsilon_{ij} \sim N(0,\sigma_e^2)\)</span> is the error term for subject i on day j</li>
+</ul>
+</div>
+<div id="porbit-model" class="section level3">
+<h3>Porbit Model</h3>
+<p>In our case, we follow Albert and Chib (1993, Note set II page 160) to represent bernoulli data as a latent variable model (equivalent to a probit model in the GLM frameworks).</p>
+<p>We let <span class="math inline">\(z_i\)</span> denote subjet i’s latent variable:</p>
+<p><span class="math display">\[y_i = \begin{cases} 1 &amp; \text{if } z_i &gt; 0 \\ 0 &amp; \text{if } z_i \leq 0 \end{cases}\]</span></p>
+<p>where <span class="math inline">\(z_i \sim N(x_i^T\beta, 1)\)</span> which is never observed.</p>
+<p>The likelihood for a single subject <span class="math inline">\(i\)</span> is then:</p>
+<p><span class="math display">\[\mathbb{L}(y_i|z_i,x_i,\beta)\propto 
+\{1(z_i&gt;0)1(y_i=1) + 1(z_i \leq 0)1(y_i=0)\} 
+\exp{\left(
+-\frac{1}{2}(z_i - x_i^T\beta)^2
+\right)}\]</span></p>
+<p>In our case, unlike in Albert and Chib, we do not only have the <span class="math inline">\(\beta\)</span> parameter. We also have the random intercept parameter <span class="math inline">\(u_i\)</span> which we typically assume to have a prior <span class="math inline">\(u_i \sim N(0, \sigma_u^2)\)</span>. Our choice of prior for <span class="math inline">\(\beta\)</span> determines the posterior distribution of <span class="math inline">\(\beta\)</span>. We recall the bayesian relationship between the posterior and the likelihood:</p>
+<p><span class="math display">\[p(\beta|y) \propto \mathbb{L}(y|\beta)\pi(\beta)\pi(u_i)\]</span>.</p>
+</div>
+<div id="priors" class="section level3">
+<h3>Priors</h3>
+<p>If we choose a non-informative prior <span class="math inline">\(\pi(\beta)\)</span> then we get the following posterior:</p>
+<p><span class="math display">\[p(\beta|y) \propto \pi(\beta)\prod_{i=1}^n\mathbb{L}(y_i|z_i,x_i,\beta)\]</span></p>
+<p>We can also choose the prior for <span class="math inline">\(\beta\)</span> to conduct a ridge or lasso regression by choosing <span class="math inline">\(\beta \sim N(0, \gamma)\)</span> or <span class="math inline">\(\beta \sim \text{Laplace}(0, \gamma)\)</span> respectively.</p>
+</div>
+</div>
+<div id="logistic-regression-just-for-now" class="section level1">
+<h1>Logistic Regression (Just for now)</h1>
+<pre class="r"><code># logistic regression using base R
+logit &lt;- glm(sleep_binary ~ TotalSteps, data = data, family = binomial(link = &quot;logit&quot;))
+summary(logit)</code></pre>
+<pre><code>## 
+## Call:
+## glm(formula = sleep_binary ~ TotalSteps, family = binomial(link = &quot;logit&quot;), 
+##     data = data)
+## 
+## Deviance Residuals: 
+##     Min       1Q   Median       3Q      Max  
+## -1.6250  -1.2006   0.8742   1.0930   1.6459  
+## 
+## Coefficients:
+##               Estimate Std. Error z value Pr(&gt;|z|)    
+## (Intercept)  1.011e+00  2.389e-01   4.233 2.31e-05 ***
+## TotalSteps  -9.078e-05  2.493e-05  -3.642 0.000271 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## (Dispersion parameter for binomial family taken to be 1)
+## 
+##     Null deviance: 567.18  on 412  degrees of freedom
+## Residual deviance: 553.31  on 411  degrees of freedom
+## AIC: 557.31
+## 
+## Number of Fisher Scoring iterations: 4</code></pre>
 </div>
 
 

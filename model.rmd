@@ -3,9 +3,112 @@ title: "Longitudinal Binary Model"
 output: html_document
 ---
 
+```{r setup, include=FALSE}
+library(dplyr)
+```
+## Description of Data and Research Question
+
+The data comes from user fitbit data and includes variables such as step count, time spent in different activity levels, and sleep. The user is identified by a unique ID and is repeatedly observed across time (in days). The research question is:
+
+> to determine if the number of steps taken by a user is related to whether or not they slept more than 7 hours that night.
+
+This is a longitudinal binary model because the response variable is binary (slept more than 7 hours or not) and the data is longitudinal (repeated observations across time). The prediction will be a probability of sleeping more than 7 hours.
+
+We will include a random intercept for each individual to account for the individual's "baseline" probability of sleeping more than 7 hours.
+
+### Data Exploration
+
+```{r}
+activity_data <- read.csv("data/Fitabase Data 4.12.16-5.12.16/dailyActivity_merged.csv")
+sleep_data <- read.csv("data/Fitabase Data 4.12.16-5.12.16/sleepDay_merged.csv")
+
+activity_data$ActivityDate <- as.Date(activity_data$ActivityDate, format = "%m/%d/%Y")
+
+# calculate the sleep binary for each day
+sleep_data$sleep_binary <- ifelse(sleep_data$TotalMinutesAsleep > 7*60, 1, 0)
+# cast the SleepDay to date from datetime and name ActivityDate
+# first from char to datetime
+sleep_data$SleepDay <- as.POSIXct(sleep_data$SleepDay, format = "%m/%d/%Y %I:%M:%S %p")
+# then from datetime to date
+sleep_data$ActivityDate <- as.Date(sleep_data$SleepDay)
+
+print(str(activity_data))
+print(str(sleep_data))
+```
+
+We join the data. 
+
+```{r}
+# join the data on ActivityDate and Id
+data <- merge(
+    activity_data,
+    sleep_data,
+    by = c("Id", "ActivityDate")
+)
+
+print(str(data))
+```
+
+We display the count of observations for each idividual.
+
+```{r}
+data %>%
+    group_by(Id) %>%
+    summarise(n = n()) %>%
+    arrange(desc(n))
+```
+
+We see that we do not have a uniform numer of observations for each individual. 
+
 ## Model Setup
+
+### Random Intercept Model
 
 Random intercept model. For subject i’s jth observation, the random intercept model is defined as:
 
 $$y_{ij} = \beta_0 + \beta_1x_{ij} + u_i + \epsilon_{ij}$$
 
+where:
+
+* $y_ij$ is the probability of sleeping more than 7 hours for subject i on day j
+* $x_{ij}$ is the number of steps taken by subject i on day j
+* $u_i$ is the random intercept for subject i
+* $\epsilon_{ij} \sim N(0,\sigma_e^2)$ is the error term for subject i on day j
+
+### Porbit Model
+
+In our case, we follow Albert and Chib (1993, Note set II page 160) to represent bernoulli data as a latent variable model (equivalent to a probit model in the GLM frameworks).
+
+We let $z_i$ denote subjet i's latent variable:
+
+$$y_i = \begin{cases} 1 & \text{if } z_i > 0 \\ 0 & \text{if } z_i \leq 0 \end{cases}$$
+
+where $z_i \sim N(x_i^T\beta, 1)$ which is never observed. 
+
+The likelihood for a single subject $i$ is then:
+
+$$\mathbb{L}(y_i|z_i,x_i,\beta)\propto 
+\{1(z_i>0)1(y_i=1) + 1(z_i \leq 0)1(y_i=0)\} 
+\exp{\left(
+-\frac{1}{2}(z_i - x_i^T\beta)^2
+\right)}$$
+
+In our case, unlike in Albert and Chib, we do not only have the $\beta$ parameter. We also have the random intercept parameter $u_i$ which we typically assume to have a prior $u_i \sim N(0, \sigma_u^2)$. Our choice of prior for $\beta$ determines the posterior distribution of $\beta$. We recall the bayesian relationship between the posterior and the likelihood:
+
+$$p(\beta|y) \propto \mathbb{L}(y|\beta)\pi(\beta)\pi(u_i)$$.
+
+### Priors
+
+If we choose a non-informative prior $\pi(\beta)$ then we get the following posterior:
+
+$$p(\beta|y) \propto \pi(\beta)\prod_{i=1}^n\mathbb{L}(y_i|z_i,x_i,\beta)$$
+
+We can also choose the prior for $\beta$ to conduct a ridge or lasso regression by choosing $\beta \sim N(0, \gamma)$ or $\beta \sim \text{Laplace}(0, \gamma)$ respectively.
+
+# Logistic Regression (Just for now)
+
+```{r}
+# logistic regression using base R
+logit <- glm(sleep_binary ~ TotalSteps, data = data, family = binomial(link = "logit"))
+summary(logit)
+```
