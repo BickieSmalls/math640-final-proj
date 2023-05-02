@@ -289,9 +289,34 @@ print(str(data))</code></pre>
 <li><span class="math inline">\(u_i\)</span> is the random intercept for subject i</li>
 <li><span class="math inline">\(\epsilon_{ij} \sim N(0,\sigma_e^2)\)</span> is the error term for subject i on day j</li>
 </ul>
+<p>The matrix form of the model is:</p>
+<p><span class="math display">\[Y = X\beta + ZU + \epsilon\]</span></p>
+<p>where:</p>
+<ul>
+<li><span class="math inline">\(Y\)</span> is the <span class="math inline">\(n \times 1\)</span> vector of responses</li>
+<li><span class="math inline">\(X\)</span> is the <span class="math inline">\(n \times p\)</span> design matrix for the fixed effects</li>
+<li><span class="math inline">\(\beta\)</span> is the <span class="math inline">\(p \times 1\)</span> vector of fixed effects</li>
+<li><span class="math inline">\(U\)</span> is the <span class="math inline">\(n \times 1\)</span> vector of subject-specific intercepts</li>
+<li><span class="math inline">\(Z\)</span> is the design matrix</li>
+</ul>
+<p><span class="math display">\[Z = \begin{bmatrix} 
+1 &amp; 0 &amp; \cdots &amp; 0 \\
+1 &amp; 0 &amp; \cdots &amp; 0 \\
+\vdots &amp; \vdots &amp; \ddots &amp; \vdots \\
+1 &amp; 0 &amp; \cdots &amp; 0 \\
+0 &amp; 1 &amp; \cdots &amp; 0 \\
+0 &amp; 1 &amp; \cdots &amp; 0 \\
+\vdots &amp; \vdots &amp; \ddots &amp; \vdots \\
+0 &amp; 1 &amp; \cdots &amp; 0 \\
+\vdots &amp; \vdots &amp; \ddots &amp; \vdots \\
+0 &amp; 0 &amp; \cdots &amp; 1 \\
+0 &amp; 0 &amp; \cdots &amp; 1 \\
+\vdots &amp; \vdots &amp; \ddots &amp; \vdots \\
+0 &amp; 0 &amp; \cdots &amp; 1 \\
+\end{bmatrix}\]</span></p>
 </div>
-<div id="porbit-model" class="section level3">
-<h3>Porbit Model</h3>
+<div id="probit-model" class="section level3">
+<h3>Probit Model</h3>
 <p>In our case, we follow Albert and Chib (1993, Note set II page 160) to represent bernoulli data as a latent variable model (equivalent to a probit model in the GLM frameworks).</p>
 <p>We let <span class="math inline">\(z_i\)</span> denote subjet i’s latent variable:</p>
 <p><span class="math display">\[y_i = \begin{cases} 1 &amp; \text{if } z_i &gt; 0 \\ 0 &amp; \text{if } z_i \leq 0 \end{cases}\]</span></p>

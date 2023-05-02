@@ -75,22 +75,50 @@ where:
 * $u_i$ is the random intercept for subject i
 * $\epsilon_{ij} \sim N(0,\sigma_e^2)$ is the error term for subject i on day j
 
-### Porbit Model
+The matrix form of the model is:
+
+$$Y = X\beta + ZU + \epsilon$$
+
+where:
+
+* $Y$ is the $n \times 1$ vector of responses
+* $X$ is the $n \times p$ design matrix for the fixed effects
+* $\beta$ is the $p \times 1$ vector of fixed effects
+* $U$ is the $n \times 1$ vector of subject-specific intercepts
+* $Z$ is the design matrix
+
+$$Z = \begin{bmatrix} 
+1 & 0 & \cdots & 0 \\
+1 & 0 & \cdots & 0 \\
+\vdots & \vdots & \ddots & \vdots \\
+1 & 0 & \cdots & 0 \\
+0 & 1 & \cdots & 0 \\
+0 & 1 & \cdots & 0 \\
+\vdots & \vdots & \ddots & \vdots \\
+0 & 1 & \cdots & 0 \\
+\vdots & \vdots & \ddots & \vdots \\
+0 & 0 & \cdots & 1 \\
+0 & 0 & \cdots & 1 \\
+\vdots & \vdots & \ddots & \vdots \\
+0 & 0 & \cdots & 1 \\
+\end{bmatrix}$$
+
+### Probit Model
 
 In our case, we follow Albert and Chib (1993, Note set II page 160) to represent bernoulli data as a latent variable model (equivalent to a probit model in the GLM frameworks).
 
-We let $z_i$ denote subjet i's latent variable:
+We let $\zeta_i$ denote subjet i's latent variable:
 
-$$y_i = \begin{cases} 1 & \text{if } z_i > 0 \\ 0 & \text{if } z_i \leq 0 \end{cases}$$
+$$y_i = \begin{cases} 1 & \text{if } \zeta_i > 0 \\ 0 & \text{if } \zeta_i \leq 0 \end{cases}$$
 
 where $z_i \sim N(x_i^T\beta, 1)$ which is never observed. 
 
 The likelihood for a single subject $i$ is then:
 
-$$\mathbb{L}(y_i|z_i,x_i,\beta)\propto 
-\{1(z_i>0)1(y_i=1) + 1(z_i \leq 0)1(y_i=0)\} 
+$$\mathbb{L}(y_i|\zeta_i,x_i,\beta)\propto 
+\{1(\zeta_i>0)1(y_i=1) + 1(\zeta_i \leq 0)1(y_i=0)\} 
 \exp{\left(
--\frac{1}{2}(z_i - x_i^T\beta)^2
+-\frac{1}{2}(\zeta_i - x_i^T\beta)^2
 \right)}$$
 
 In our case, unlike in Albert and Chib, we do not only have the $\beta$ parameter. We also have the random intercept parameter $u_i$ which we typically assume to have a prior $u_i \sim N(0, \sigma_u^2)$. Our choice of prior for $\beta$ determines the posterior distribution of $\beta$. We recall the bayesian relationship between the posterior and the likelihood:
@@ -101,7 +129,7 @@ $$p(\beta|y) \propto \mathbb{L}(y|\beta)\pi(\beta)\pi(u_i)$$.
 
 If we choose a non-informative prior $\pi(\beta)$ then we get the following posterior:
 
-$$p(\beta|y) \propto \pi(\beta)\prod_{i=1}^n\mathbb{L}(y_i|z_i,x_i,\beta)$$
+$$p(\beta|y) \propto \pi(\beta)\prod_{i=1}^n\mathbb{L}(y_i|\zeta_i,x_i,\beta)$$
 
 We can also choose the prior for $\beta$ to conduct a ridge or lasso regression by choosing $\beta \sim N(0, \gamma)$ or $\beta \sim \text{Laplace}(0, \gamma)$ respectively.
 
