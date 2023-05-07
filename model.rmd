@@ -133,6 +133,62 @@ $$p(\beta|y) \propto \pi(\beta)\prod_{i=1}^n\mathbb{L}(y_i|\zeta_i,x_i,\beta)$$
 
 We can also choose the prior for $\beta$ to conduct a ridge or lasso regression by choosing $\beta \sim N(0, \gamma)$ or $\beta \sim \text{Laplace}(0, \gamma)$ respectively.
 
+# Derivation
+
+Let $y_{ij}$ be the binary outcome for subject i (i = 1, ..., N) at time point j (j = 1, ..., T_i), where $y_{ij}$ = 1 if the subject slept for 7 hours or more and $y_ij$ = 0 otherwise. Let $x_{ij}$ be the step count variable for subject i at time point j.
+
+Introduce a latent variable $\zeta_{ij}$ and a random intercept $u_i$, and define the model as follows:
+
+$$\zeta_ij = x_{ij}^T\beta + u_i + \epsilon_{ij}$$
+
+Here, $\beta$ is the regression coefficient associated with the step count variable, $u_i$ is the random intercept for subject i with $u_i \sim N(0, \sigma_u^2)$, and $\epsilon_{ij}$ is the independent and identically distributed error term with $\epsilon_{ij} \sim N(0, \sigma^2)$. $\sigma_u^2$ and $\sigma^2$ are the variances of the random intercept and error term, respectively.
+
+The binary outcome, $y_{ij}$, is determined by the latent variable $\zeta_ij$ as follows:
+
+$$y_{ij} = \begin{cases} 1 & \text{if } \zeta_{ij} > 0 \\ 0 & \text{if } \zeta_{ij} \leq 0 \end{cases}$$
+
+To specify prior distributions For the Bayesian model, you need to specify prior distributions for $\beta$ and the variances $\sigma_u^2$ and $\sigma^2$. Assuming non-informative priors for the betas, we can consider the following priors:
+
+* $p(\beta) \propto 1$ for a non-informative prior. 
+* The random intercepts $u_i$ have a prior normal distribution: $u_i \sim N(0, \sigma^2)$, which implies $p(u_i|\sigma^2) = \frac{1}{\sqrt{2\pi\sigma^2}} \exp \left(-\frac{u_i^2}{2\sigma^2}\right)$
+* A prior distribution for the variance of the random intercepts: $p(\sigma^2)$. Wr can choose a non-informative prior for sigma squared, such as  $p(\sigma^2) \propto \frac{1}{\sigma^2}$.
+
+The likelihood function for a single observation $y_ij$, given its latent variable $\zeta_{ij}$, step count $x_{ij}$, and coefficient $\beta$, is:
+
+[comment]: <> ($$\mathbb{L}_{ij} = \begin{cases} N(\zeta_{ij}; x_{ij}^T\beta + u_i, \sigma^2)  & if y_{ij} = 1 \\ N(\zeta_{ij}; x_{ij}^T\beta + u_i, \sigma^2) & if y_{ij} = 0 \end{cases}$$)
+
+$$\mathbb{L}(y_i|\zeta_i,x_i,\beta) \propto \left(1(\zeta_i>0)1(y_i=1) + 1(\zeta_i \leq 0)1(y_i=0)\right) \exp{\left(-\frac{1}{2}(\zeta_i - x_i^T\beta)^2\right)}$$
+
+Considering all observations for subject i, the likelihood for subject i is:
+
+$$\mathbb{L}(y|\zeta,X,\beta) = \prod_{i=1}^N \mathbb{L}(y_i|\zeta_i,x_i,\beta)$$
+
+Combining the likelihood function and the prior distributions, we get the joint distribution as:
+
+$$p(y, \zeta, \beta, u, \sigma^2 | X) \propto \mathbb{L}(y|\zeta,X,\beta) \times p(\beta) \times p(u|\sigma^2) \times p(\sigma^2)$$
+
+Multiplying this out we get:
+
+$$p(y, \zeta, \beta, u, \sigma^2 | X) \propto \prod_{i=1}^N \left(
+1(\zeta_i>0)1(y_i=1) + 1(\zeta_i \leq 0)1(y_i=0)\right) \exp{\left(-\frac{1}{2}(\zeta_i - x_i^T\beta)^2\right)}
+\times 1 \times \frac{1}{\sqrt{2\pi\sigma^2}} \exp{\left(-\frac{u_i^2}{2\sigma^2}\right)} \times \frac{1}{\sigma^2}$$
+
+$$= \prod_{i=1}^N \left(
+1(\zeta_i>0)1(y_i=1) + 1(\zeta_i \leq 0)1(y_i=0)\right) 
+\exp{\left(-\frac{1}{2}(\zeta_i - x_i^T\beta)^2\right)}
+\times {(\sigma^2)}^{-3/2} \exp{\left(-\frac{u_i^2}{2\sigma^2}\right)}$$
+
+$$= \prod_{i=1}^N \left(
+1(\zeta_i>0)1(y_i=1) + 1(\zeta_i \leq 0)1(y_i=0)\right) 
+\exp{\left(-\frac{1}{2}(\zeta_i - x_i^T\beta)^2 -\frac{u_i^2}{2\sigma^2}\right)}
+\times {(\sigma^2)}^{-3/2}$$
+
+To obtain the posterior distribution $p(\beta, u, \sigma^2 | y, X)$, we integrate out $\zeta$ from the joint distribution:
+
+$$p(\beta, u, \sigma^2 | y, X) \propto \int p(y, \zeta, \beta, u, \sigma^2 | X) , d\zeta$$
+
+This integration does not have a closed-form solution, so we would typically rely on a sampling algorithm, such as Markov Chain Monte Carlo (MCMC) methods, to estimate the posterior distribution and obtain parameter estimates.
+
 # Logistic Regression (Just for now)
 
 ```{r}

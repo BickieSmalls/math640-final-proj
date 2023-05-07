@@ -318,14 +318,14 @@ print(str(data))</code></pre>
 <div id="probit-model" class="section level3">
 <h3>Probit Model</h3>
 <p>In our case, we follow Albert and Chib (1993, Note set II page 160) to represent bernoulli data as a latent variable model (equivalent to a probit model in the GLM frameworks).</p>
-<p>We let <span class="math inline">\(z_i\)</span> denote subjet i’s latent variable:</p>
-<p><span class="math display">\[y_i = \begin{cases} 1 &amp; \text{if } z_i &gt; 0 \\ 0 &amp; \text{if } z_i \leq 0 \end{cases}\]</span></p>
+<p>We let <span class="math inline">\(\zeta_i\)</span> denote subjet i’s latent variable:</p>
+<p><span class="math display">\[y_i = \begin{cases} 1 &amp; \text{if } \zeta_i &gt; 0 \\ 0 &amp; \text{if } \zeta_i \leq 0 \end{cases}\]</span></p>
 <p>where <span class="math inline">\(z_i \sim N(x_i^T\beta, 1)\)</span> which is never observed.</p>
 <p>The likelihood for a single subject <span class="math inline">\(i\)</span> is then:</p>
-<p><span class="math display">\[\mathbb{L}(y_i|z_i,x_i,\beta)\propto 
-\{1(z_i&gt;0)1(y_i=1) + 1(z_i \leq 0)1(y_i=0)\} 
+<p><span class="math display">\[\mathbb{L}(y_i|\zeta_i,x_i,\beta)\propto 
+\{1(\zeta_i&gt;0)1(y_i=1) + 1(\zeta_i \leq 0)1(y_i=0)\} 
 \exp{\left(
--\frac{1}{2}(z_i - x_i^T\beta)^2
+-\frac{1}{2}(\zeta_i - x_i^T\beta)^2
 \right)}\]</span></p>
 <p>In our case, unlike in Albert and Chib, we do not only have the <span class="math inline">\(\beta\)</span> parameter. We also have the random intercept parameter <span class="math inline">\(u_i\)</span> which we typically assume to have a prior <span class="math inline">\(u_i \sim N(0, \sigma_u^2)\)</span>. Our choice of prior for <span class="math inline">\(\beta\)</span> determines the posterior distribution of <span class="math inline">\(\beta\)</span>. We recall the bayesian relationship between the posterior and the likelihood:</p>
 <p><span class="math display">\[p(\beta|y) \propto \mathbb{L}(y|\beta)\pi(\beta)\pi(u_i)\]</span>.</p>
@@ -333,9 +333,45 @@ print(str(data))</code></pre>
 <div id="priors" class="section level3">
 <h3>Priors</h3>
 <p>If we choose a non-informative prior <span class="math inline">\(\pi(\beta)\)</span> then we get the following posterior:</p>
-<p><span class="math display">\[p(\beta|y) \propto \pi(\beta)\prod_{i=1}^n\mathbb{L}(y_i|z_i,x_i,\beta)\]</span></p>
+<p><span class="math display">\[p(\beta|y) \propto \pi(\beta)\prod_{i=1}^n\mathbb{L}(y_i|\zeta_i,x_i,\beta)\]</span></p>
 <p>We can also choose the prior for <span class="math inline">\(\beta\)</span> to conduct a ridge or lasso regression by choosing <span class="math inline">\(\beta \sim N(0, \gamma)\)</span> or <span class="math inline">\(\beta \sim \text{Laplace}(0, \gamma)\)</span> respectively.</p>
 </div>
+</div>
+<div id="derivation" class="section level1">
+<h1>Derivation</h1>
+<p>Let <span class="math inline">\(y_{ij}\)</span> be the binary outcome for subject i (i = 1, …, N) at time point j (j = 1, …, T_i), where <span class="math inline">\(y_{ij}\)</span> = 1 if the subject slept for 7 hours or more and <span class="math inline">\(y_ij\)</span> = 0 otherwise. Let <span class="math inline">\(x_{ij}\)</span> be the step count variable for subject i at time point j.</p>
+<p>Introduce a latent variable <span class="math inline">\(\zeta_{ij}\)</span> and a random intercept <span class="math inline">\(u_i\)</span>, and define the model as follows:</p>
+<p><span class="math display">\[\zeta_ij = x_{ij}^T\beta + u_i + \epsilon_{ij}\]</span></p>
+<p>Here, <span class="math inline">\(\beta\)</span> is the regression coefficient associated with the step count variable, <span class="math inline">\(u_i\)</span> is the random intercept for subject i with <span class="math inline">\(u_i \sim N(0, \sigma_u^2)\)</span>, and <span class="math inline">\(\epsilon_{ij}\)</span> is the independent and identically distributed error term with <span class="math inline">\(\epsilon_{ij} \sim N(0, \sigma^2)\)</span>. <span class="math inline">\(\sigma_u^2\)</span> and <span class="math inline">\(\sigma^2\)</span> are the variances of the random intercept and error term, respectively.</p>
+<p>The binary outcome, <span class="math inline">\(y_{ij}\)</span>, is determined by the latent variable <span class="math inline">\(\zeta_ij\)</span> as follows:</p>
+<p><span class="math display">\[y_{ij} = \begin{cases} 1 &amp; \text{if } \zeta_{ij} &gt; 0 \\ 0 &amp; \text{if } \zeta_{ij} \leq 0 \end{cases}\]</span></p>
+<p>To specify prior distributions For the Bayesian model, you need to specify prior distributions for <span class="math inline">\(\beta\)</span> and the variances <span class="math inline">\(\sigma_u^2\)</span> and <span class="math inline">\(\sigma^2\)</span>. Assuming non-informative priors for the betas, we can consider the following priors:</p>
+<ul>
+<li><span class="math inline">\(p(\beta) \propto 1\)</span> for a non-informative prior.</li>
+<li>The random intercepts <span class="math inline">\(u_i\)</span> have a prior normal distribution: <span class="math inline">\(u_i \sim N(0, \sigma^2)\)</span>, which implies <span class="math inline">\(p(u_i|\sigma^2) = \frac{1}{\sqrt{2\pi\sigma^2}} \exp \left(-\frac{u_i^2}{2\sigma^2}\right)\)</span></li>
+<li>A prior distribution for the variance of the random intercepts: <span class="math inline">\(p(\sigma^2)\)</span>. Wr can choose a non-informative prior for sigma squared, such as <span class="math inline">\(p(\sigma^2) \propto \frac{1}{\sigma^2}\)</span>.</li>
+</ul>
+<p>The likelihood function for a single observation <span class="math inline">\(y_ij\)</span>, given its latent variable <span class="math inline">\(\zeta_{ij}\)</span>, step count <span class="math inline">\(x_{ij}\)</span>, and coefficient <span class="math inline">\(\beta\)</span>, is:</p>
+<p><span class="math display">\[\mathbb{L}(y_i|\zeta_i,x_i,\beta) \propto \left(1(\zeta_i&gt;0)1(y_i=1) + 1(\zeta_i \leq 0)1(y_i=0)\right) \exp{\left(-\frac{1}{2}(\zeta_i - x_i^T\beta)^2\right)}\]</span></p>
+<p>Considering all observations for subject i, the likelihood for subject i is:</p>
+<p><span class="math display">\[\mathbb{L}(y|\zeta,X,\beta) = \prod_{i=1}^N \mathbb{L}(y_i|\zeta_i,x_i,\beta)\]</span></p>
+<p>Combining the likelihood function and the prior distributions, we get the joint distribution as:</p>
+<p><span class="math display">\[p(y, \zeta, \beta, u, \sigma^2 | X) \propto \mathbb{L}(y|\zeta,X,\beta) \times p(\beta) \times p(u|\sigma^2) \times p(\sigma^2)\]</span></p>
+<p>Multiplying this out we get:</p>
+<p><span class="math display">\[p(y, \zeta, \beta, u, \sigma^2 | X) \propto \prod_{i=1}^N \left(
+1(\zeta_i&gt;0)1(y_i=1) + 1(\zeta_i \leq 0)1(y_i=0)\right) \exp{\left(-\frac{1}{2}(\zeta_i - x_i^T\beta)^2\right)}
+\times 1 \times \frac{1}{\sqrt{2\pi\sigma^2}} \exp{\left(-\frac{u_i^2}{2\sigma^2}\right)} \times \frac{1}{\sigma^2}\]</span></p>
+<p><span class="math display">\[= \prod_{i=1}^N \left(
+1(\zeta_i&gt;0)1(y_i=1) + 1(\zeta_i \leq 0)1(y_i=0)\right) 
+\exp{\left(-\frac{1}{2}(\zeta_i - x_i^T\beta)^2\right)}
+\times {(\sigma^2)}^{-3/2} \exp{\left(-\frac{u_i^2}{2\sigma^2}\right)}\]</span></p>
+<p><span class="math display">\[= \prod_{i=1}^N \left(
+1(\zeta_i&gt;0)1(y_i=1) + 1(\zeta_i \leq 0)1(y_i=0)\right) 
+\exp{\left(-\frac{1}{2}(\zeta_i - x_i^T\beta)^2 -\frac{u_i^2}{2\sigma^2}\right)}
+\times {(\sigma^2)}^{-3/2}\]</span></p>
+<p>To obtain the posterior distribution <span class="math inline">\(p(\beta, u, \sigma^2 | y, X)\)</span>, we integrate out <span class="math inline">\(\zeta\)</span> from the joint distribution:</p>
+<p><span class="math display">\[p(\beta, u, \sigma^2 | y, X) \propto \int p(y, \zeta, \beta, u, \sigma^2 | X) , d\zeta\]</span></p>
+<p>This integration does not have a closed-form solution, so we would typically rely on a sampling algorithm, such as Markov Chain Monte Carlo (MCMC) methods, to estimate the posterior distribution and obtain parameter estimates.</p>
 </div>
 <div id="logistic-regression-just-for-now" class="section level1">
 <h1>Logistic Regression (Just for now)</h1>
