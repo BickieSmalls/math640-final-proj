@@ -1,0 +1,66 @@
+\begin{thebibliography}{}
+
+\bibitem[\protect\citename{Baek \bgroup et al.\egroup }2016]{Baek2016}
+J.~Baek, E.~V. Sanchez-Vaznaugh, and B.~N. S\'anchez.
+\newblock 2016.
+\newblock Hierarchical distributed-lag models: Exploring varying geographic
+  scale and magnitude in associations between the built environment and health.
+\newblock {\em American Journal of Epidemiology}, 183:583--592.
+
+\bibitem[\protect\citename{Luts and Wand}2015]{LutsWand2015}
+J.~Luts and M.~P. Wand.
+\newblock 2015.
+\newblock Variational inference for count response semiparametric regression.
+\newblock {\em Bayesian Analysis}, 10:991--1023.
+
+\bibitem[\protect\citename{Meyer \bgroup et al.\egroup }2019]{Meyer2019}
+M.~J. Meyer, I.~Mordukhovich, G.~A. Wellenius, M.~A. Mittleman, J.~P.
+  McCracken, B.~A. Coull, and E.~McNeely.
+\newblock 2019.
+\newblock Changes in heart rate and rhythm during a crossover study of
+  simulated commercial flight in older and vulnerable participants.
+\newblock {\em Frontiers Physiology}, 10:1339.
+
+\bibitem[\protect\citename{Meyer \bgroup et al.\egroup }2022]{MeyerMord2022}
+M.~J. Meyer, I.~Mordukhovich, B.~A. Coull, J.~P. McCracken, R.~Germany, G.~A.
+  Wellenius, M.~A. Mittleman, and E.~McNeely.
+\newblock 2022.
+\newblock Impact of simulated flight conditions on supraventricular and
+  ventricular ectopy.
+\newblock {\em JAMA Network Open}, Submitted \& Under Review.
+
+\bibitem[\protect\citename{Ormerod and Wand}2010]{OrmerodWand2010}
+J.~T. Ormerod and M.~P. Wand.
+\newblock 2010.
+\newblock Explaining variational approximations.
+\newblock {\em The American Statistician}, 64:140--153.
+
+\bibitem[\protect\citename{Schwartz}2000]{Schwartz2000}
+J.~Schwartz.
+\newblock 2000.
+\newblock The distributed lag between air pollution and daily deaths.
+\newblock {\em Epidemiology}, 11:320--326.
+
+\bibitem[\protect\citename{Welty \bgroup et al.\egroup }2009]{Welty2009}
+L.~J. Welty, R.~D. Peng, S.~L. Zeger, and F.~Dominici.
+\newblock 2009.
+\newblock Bayesian distributed lag models: Estimating effects of particulate
+  matter air pollution on daily mortality.
+\newblock {\em Biometrics}, 65:282--291.
+
+\bibitem[\protect\citename{Wilson \bgroup et al.\egroup }2017]{Wilson2017}
+A.~Wilson, Y.-H.~M. Chiu, H-.H.~L. Hsu, R.~O. Wright, R.~J. Wright, and B.~A.
+  Coull.
+\newblock 2017.
+\newblock Bayesian distributed lag interaction models to identify perinatal
+  windows of vulnerability in children?s health.
+\newblock {\em Biostatistics}, 18:537--552.
+
+\bibitem[\protect\citename{You \bgroup et al.\egroup }2014]{You2014}
+C.~You, J.~T. Ormerod, and S.~M\"uller.
+\newblock 2014.
+\newblock On variational bayes estimation and variational information criteria
+  for linear regression models.
+\newblock {\em Australian \& New Zealand Journal of Statistcs}, 56:73--87.
+
+\end{thebibliography}
