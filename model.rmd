@@ -18,6 +18,8 @@ We will include a random intercept for each individual to account for the indivi
 
 ### Data Exploration
 
+This looks at the Fitabase data. 
+
 ```{r}
 activity_data <- read.csv("data/Fitabase Data 4.12.16-5.12.16/dailyActivity_merged.csv")
 sleep_data <- read.csv("data/Fitabase Data 4.12.16-5.12.16/sleepDay_merged.csv")
@@ -59,6 +61,23 @@ data %>%
 ```
 
 We see that we do not have a uniform numer of observations for each individual. 
+
+Now we look at the other data that Juna found. 
+
+```{r}
+# read from data/clean
+data <- read.csv("data/clean/daily_fitbit.csv")
+data$sleep_binary <- if_else(data$sleep_duration_hr > 7, 1, 0)
+str(data)
+```
+
+```{r}
+data %>%
+    group_by(id) %>%
+    summarise(n = n()) %>%
+    arrange(desc(n))
+```
+
 
 ## Model Setup
 
@@ -202,19 +221,21 @@ library(truncnorm) # for truncated normal functions
 ```{r}
 # get the obs count per ID
 obs <- data %>%
-    group_by(Id) %>%
+    group_by(id) %>%
     summarise(n = n()) %>%
     arrange(desc(n)) 
 ```
 
 ```{r}
-model_data <- data[,c("TotalSteps","SedentaryMinutes")]
-model_data
+cols_to_remove <- c("id","date","sleep_duration_hr","sleep_binary")
+model_data <- data[,!(names(data) %in% cols_to_remove)]
+dim(model_data)
+head(model_data)
 ```
 ```{r}
 # use our data
 set.seed(123)
-IDs <- unique(data$Id)
+IDs <- unique(data$id)
 N <- nrow(model_data)
 nGroups <- length(IDs)
 p <- ncol(model_data)
@@ -229,8 +250,8 @@ for (i in 1:nGroups) {
   # column i is a vector of 1s of length n_i
   # n_i is the number of observations for individual i
   # determined using obs
-  n_i <- sum(data$Id == IDs[i])
-  D[which(data$Id == IDs[i]), i] <- rep(1, n_i)
+  n_i <- sum(data$id == IDs[i])
+  D[which(data$id == IDs[i]), i] <- rep(1, n_i)
 }
 
 y1 <- data$TotalMinutesAsleep # continuous outcome
@@ -251,8 +272,8 @@ prior_tau_rate <- 1
 
 ```{r}
 # Number of iterations and burn-in
-niter <- 20000
-burnin <- 10000
+niter <- 5000
+burnin <- 1000
 ```
 
 ```{r}
