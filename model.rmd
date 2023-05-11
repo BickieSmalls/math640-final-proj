@@ -196,3 +196,100 @@ This integration does not have a closed-form solution, so we would typically rel
 logit <- glm(sleep_binary ~ TotalSteps, data = data, family = binomial(link = "logit"))
 summary(logit)
 ```
+
+# Computing
+
+```{r}
+# Load required libraries
+library(MASS) # for multivariate normal functions
+library(coda) # for mcmc objects
+library(mcmcplots) # for mcmcplot
+```
+
+```{r}
+# Synthetic data generation for toy example
+set.seed(123)
+N <- 100
+nGroups <- 10
+p <- 3
+true_beta <- c(2, -1, 3)
+true_tau <- 1
+X <- cbind(1, matrix(rnorm(N * (p - 1)), ncol = p - 1))
+group <- factor(sample(1:nGroups, N, replace = TRUE))
+random_effects <- rnorm(length(unique(group)), sd = sqrt(1 / true_tau))
+y <- X %*% true_beta + random_effects[group] + rnorm(N, sd = 2)
+```
+```{r}
+# Define prior parameters
+prior_beta_mean <- rep(0, p)
+prior_beta_cov <- diag(p)
+prior_tau_shape <- 2
+prior_tau_rate <- 1
+```
+
+```{r}
+# Number of iterations and burn-in
+niter <- 20000
+burnin <- 10000
+```
+
+```{r}
+# Initialize arrays to store samples
+beta_samples <- matrix(NA, nrow = niter, ncol = p)
+u_samples <- matrix(NA, nrow = niter, ncol = nGroups)
+tau_samples <- rep(NA, niter)
+```
+
+```{r}
+beta <- rep(0, p)
+u <- rep(0, nGroups)
+tau <- 1
+
+for (i in 1:niter) {
+  # Sample beta given tau, u, and the data
+  X_residual <- y - u[group]
+  post_beta_cov <- solve(solve(prior_beta_cov) + t(X) %*% X)
+  post_beta_mean <- post_beta_cov %*% (solve(prior_beta_cov) %*% prior_beta_mean + t(X) %*% X_residual)
+  beta <- mvrnorm(n = 1, mu = post_beta_mean, Sigma = post_beta_cov)
+
+  # Update the model with new beta values
+  X_residual <- y - X %*% beta
+
+  # Sample U given beta, tau, and the data
+  for (g in 1:nGroups) {
+    this_group <- group == g
+    group_size <- sum(this_group)
+    post_u_mean <- sum(X_residual[this_group]) * tau / (tau * group_size + 1)
+    post_u_var <- 1 / (tau * group_size + 1)
+    u[g] <- rnorm(n = 1, mean = post_u_mean, sd = sqrt(post_u_var))
+  }
+
+  # Sample tau given beta, U, and the data
+  group_residuals <- X_residual - u[group]
+  post_tau_shape <- prior_tau_shape + N / 2
+  post_tau_rate <- prior_tau_rate + sum(group_residuals^2) / 2
+  tau <- rgamma(n = 1, shape = post_tau_shape, rate = post_tau_rate)
+
+  # Store samples
+  beta_samples[i, ] <- beta
+  u_samples[i, ] <- u
+  tau_samples[i] <- tau
+}
+```
+
+```{r}
+# hist for each distibution
+hist(beta_samples)
+#hist(u_samples)
+hist(tau_samples)
+```
+```{r}
+# Combine samples into an mcmc object
+samples <- cbind(beta_samples, u_samples, tau_samples)
+colnames(samples) <- c(paste0("beta_", 1:p), paste0("u_", 1:nGroups), "tau")
+samples_mcmc <- as.mcmc(samples[-(1:burnin), ]) # Remove burn-in samples
+```
+```{r}
+# Visualize convergence using mcmcplot
+mcmcplot(samples_mcmc)
+```
