@@ -214,11 +214,25 @@ model_data
 ```{r}
 # use our data
 set.seed(123)
-IDs <- unique(model_data$Id)
+IDs <- unique(data$Id)
 N <- nrow(model_data)
 nGroups <- length(IDs)
 p <- ncol(model_data)
 X <- cbind(1, as.matrix(model_data))
+
+# design matrix D that maps the U random intercepts to the observations for each individual
+# D is a block diagonal matrix with nGroups blocks where each block has a vector of 1s of length n_i
+# for each individual i generate a matrix where the column i is a vector of 1s of length n_i
+# first creatre a matrix of 0s of size N x nGroups
+D <- matrix(0, N, nGroups)
+for (i in 1:nGroups) {
+  # column i is a vector of 1s of length n_i
+  # n_i is the number of observations for individual i
+  # determined using obs
+  n_i <- sum(data$Id == IDs[i])
+  D[which(data$Id == IDs[i]), i] <- rep(1, n_i)
+}
+
 y1 <- data$TotalMinutesAsleep # continuous outcome
 y <- data$sleep_binary # binary outcome
 ```
@@ -243,17 +257,17 @@ burnin <- 10000
 
 ```{r}
 # Initialize arrays to store samples
-beta_samples <- matrix(NA, nrow = niter, ncol = p)
+beta_samples <- matrix(NA, nrow = niter, ncol = p+1)
 u_samples <- matrix(NA, nrow = niter, ncol = nGroups)
 tau_samples <- rep(NA, niter)
 z_samples <- matrix(NA, nrow = niter, ncol = N)
 ```
 
 ```{r}
-# Initialize starting values
-beta <- rep(0, p)
-u <- rep(0, nGroups)
-z <- rep(0, N)
+# Initialize starting values, which are matrices of 0s
+beta <- matrix(0, p, 1)
+u <- matrix(0, nGroups, 1)
+z <- matrix(0, N, 1)
 tau <- 1
 ```
 
@@ -261,24 +275,26 @@ tau <- 1
 # loop over the number of iterations
 for (i in 1:niter) {
   # Sample beta using MVN
-  beta_mu <- solve(t(X) %*% X) %*% t(X) %*% (z - u)
+  beta_mu <- solve(t(X) %*% X) %*% t(X) %*% (z - D %*% u)
   beta_sigma <- solve(t(X) %*% X)
   beta <- mvrnorm(n = 1, mu = beta_mu, Sigma = beta_sigma)
+
   # Sample U using MVN
-  # for each group, sample from MVN
-  for (j in 1:nGroups) {
-    # get the indices for the group
-    group_indices <- which(data$Id == IDs[j])
-    # get the data just for this group
-    Xj <- X[group_indices, ]
-    # then sample from MVN using the group data
-    u[j] <- mvrnorm(n = 1, mu = , Sigma = )
-  }
-  # sample z using truncated normal
-  z <- rtruncnorm(n, a=-Inf, b=Inf, mean = 0, sd = 1)
+  I <- diag(nGroups)
+  u_mu <- solve(t(D) %*% D + tau * I) %*% t(D) %*% (z - X %*% beta)
+  u_sigma <- solve(t(D) %*% D + tau * I)
+  u <- mvrnorm(n = 1, mu = u_mu, Sigma = u_sigma)
+
   # Sample tau using gamma
-  tau <- rgamma(n = 1, shape = , rate = )
-  
+  tau_shape <- nGroups/2
+  tau_rate <- 1/2 * sqrt(sum(u^2))
+  tau <- rgamma(n = 1, shape = tau_shape, rate = tau_rate)
+
+  # sample z using truncated normal
+  z_sd = 1
+  z_mean = X %*% beta + D %*% u
+  z <- rtruncnorm(n = 1, a=-Inf, b=Inf, mean = 0, sd = 1)
+    
   # Store samples
   beta_samples[i, ] <- beta
   u_samples[i, ] <- u
@@ -288,16 +304,14 @@ for (i in 1:niter) {
 ```
 
 ```{r}
-# sanity check by plotting the samples
-# hist for each distibution
-hist(beta_samples)
-#hist(u_samples)
-hist(tau_samples)
-```
-```{r}
 # Combine samples into an mcmc object
-samples <- cbind(beta_samples, u_samples, tau_samples)
-colnames(samples) <- c(paste0("beta_", 1:p), paste0("u_", 1:nGroups), "tau")
+tau_samples <- matrix(tau_samples)
+# first name the columns of each
+colnames(beta_samples) <- paste0("beta_", 1:(p+1))
+colnames(u_samples) <- paste0("u_", 1:nGroups)
+colnames(tau_samples) <- "tau"
+colnames(z_samples) <- paste0("z_", 1:N)
+samples <- cbind(beta_samples, u_samples, tau_samples, z_samples)
 samples_mcmc <- as.mcmc(samples[-(1:burnin), ]) # Remove burn-in samples
 ```
 ```{r}
