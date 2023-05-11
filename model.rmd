@@ -261,10 +261,17 @@ tau <- 1
 # loop over the number of iterations
 for (i in 1:niter) {
   # Sample beta using MVN
-  beta <- mvrnorm(n = 1, mu = , Sigma = )
+  beta_mu <- solve(t(X) %*% X) %*% t(X) %*% (z - u)
+  beta_sigma <- solve(t(X) %*% X)
+  beta <- mvrnorm(n = 1, mu = beta_mu, Sigma = beta_sigma)
   # Sample U using MVN
   # for each group, sample from MVN
   for (j in 1:nGroups) {
+    # get the indices for the group
+    group_indices <- which(data$Id == IDs[j])
+    # get the data just for this group
+    Xj <- X[group_indices, ]
+    # then sample from MVN using the group data
     u[j] <- mvrnorm(n = 1, mu = , Sigma = )
   }
   # sample z using truncated normal
