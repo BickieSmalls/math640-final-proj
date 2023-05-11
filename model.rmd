@@ -189,14 +189,6 @@ $$p(\beta, u, \sigma^2 | y, X) \propto \int p(y, \zeta, \beta, u, \sigma^2 | X) 
 
 This integration does not have a closed-form solution, so we would typically rely on a sampling algorithm, such as Markov Chain Monte Carlo (MCMC) methods, to estimate the posterior distribution and obtain parameter estimates.
 
-# Logistic Regression (Just for now)
-
-```{r}
-# logistic regression using base R
-logit <- glm(sleep_binary ~ TotalSteps, data = data, family = binomial(link = "logit"))
-summary(logit)
-```
-
 # Computing
 
 ```{r}
@@ -204,25 +196,41 @@ summary(logit)
 library(MASS) # for multivariate normal functions
 library(coda) # for mcmc objects
 library(mcmcplots) # for mcmcplot
+library(truncnorm) # for truncated normal functions
 ```
 
 ```{r}
-# Synthetic data generation for toy example
-set.seed(123)
-N <- 100
-nGroups <- 10
-p <- 3
-true_beta <- c(2, -1, 3)
-true_tau <- 1
-X <- cbind(1, matrix(rnorm(N * (p - 1)), ncol = p - 1))
-group <- factor(sample(1:nGroups, N, replace = TRUE))
-random_effects <- rnorm(length(unique(group)), sd = sqrt(1 / true_tau))
-y <- X %*% true_beta + random_effects[group] + rnorm(N, sd = 2)
+# get the obs count per ID
+obs <- data %>%
+    group_by(Id) %>%
+    summarise(n = n()) %>%
+    arrange(desc(n)) 
 ```
+
+```{r}
+model_data <- data[,c("TotalSteps","SedentaryMinutes")]
+model_data
+```
+```{r}
+# use our data
+set.seed(123)
+IDs <- unique(model_data$Id)
+N <- nrow(model_data)
+nGroups <- length(IDs)
+p <- ncol(model_data)
+X <- cbind(1, as.matrix(model_data))
+y1 <- data$TotalMinutesAsleep # continuous outcome
+y <- data$sleep_binary # binary outcome
+```
+
 ```{r}
 # Define prior parameters
 prior_beta_mean <- rep(0, p)
 prior_beta_cov <- diag(p)
+prior_u_mean <- rep(0, nGroups)
+prior_u_cov <- diag(nGroups)
+prior_z_mean <- 0
+prior_z_sd <- 1
 prior_tau_shape <- 2
 prior_tau_rate <- 1
 ```
@@ -238,46 +246,42 @@ burnin <- 10000
 beta_samples <- matrix(NA, nrow = niter, ncol = p)
 u_samples <- matrix(NA, nrow = niter, ncol = nGroups)
 tau_samples <- rep(NA, niter)
+z_samples <- matrix(NA, nrow = niter, ncol = N)
 ```
 
 ```{r}
+# Initialize starting values
 beta <- rep(0, p)
 u <- rep(0, nGroups)
+z <- rep(0, N)
 tau <- 1
+```
 
+```{r}
+# loop over the number of iterations
 for (i in 1:niter) {
-  # Sample beta given tau, u, and the data
-  X_residual <- y - u[group]
-  post_beta_cov <- solve(solve(prior_beta_cov) + t(X) %*% X)
-  post_beta_mean <- post_beta_cov %*% (solve(prior_beta_cov) %*% prior_beta_mean + t(X) %*% X_residual)
-  beta <- mvrnorm(n = 1, mu = post_beta_mean, Sigma = post_beta_cov)
-
-  # Update the model with new beta values
-  X_residual <- y - X %*% beta
-
-  # Sample U given beta, tau, and the data
-  for (g in 1:nGroups) {
-    this_group <- group == g
-    group_size <- sum(this_group)
-    post_u_mean <- sum(X_residual[this_group]) * tau / (tau * group_size + 1)
-    post_u_var <- 1 / (tau * group_size + 1)
-    u[g] <- rnorm(n = 1, mean = post_u_mean, sd = sqrt(post_u_var))
+  # Sample beta using MVN
+  beta <- mvrnorm(n = 1, mu = , Sigma = )
+  # Sample U using MVN
+  # for each group, sample from MVN
+  for (j in 1:nGroups) {
+    u[j] <- mvrnorm(n = 1, mu = , Sigma = )
   }
-
-  # Sample tau given beta, U, and the data
-  group_residuals <- X_residual - u[group]
-  post_tau_shape <- prior_tau_shape + N / 2
-  post_tau_rate <- prior_tau_rate + sum(group_residuals^2) / 2
-  tau <- rgamma(n = 1, shape = post_tau_shape, rate = post_tau_rate)
-
+  # sample z using truncated normal
+  z <- rtruncnorm(n, a=-Inf, b=Inf, mean = 0, sd = 1)
+  # Sample tau using gamma
+  tau <- rgamma(n = 1, shape = , rate = )
+  
   # Store samples
   beta_samples[i, ] <- beta
   u_samples[i, ] <- u
+  z_samples[i, ] <- z
   tau_samples[i] <- tau
 }
 ```
 
 ```{r}
+# sanity check by plotting the samples
 # hist for each distibution
 hist(beta_samples)
 #hist(u_samples)
