@@ -18,6 +18,8 @@ We will include a random intercept for each individual to account for the indivi
 
 ### Data Exploration
 
+This looks at the Fitabase data. 
+
 ```{r}
 activity_data <- read.csv("data/Fitabase Data 4.12.16-5.12.16/dailyActivity_merged.csv")
 sleep_data <- read.csv("data/Fitabase Data 4.12.16-5.12.16/sleepDay_merged.csv")
@@ -59,6 +61,23 @@ data %>%
 ```
 
 We see that we do not have a uniform numer of observations for each individual. 
+
+Now we look at the other data that Juna found. 
+
+```{r}
+# read from data/clean
+data <- read.csv("data/clean/daily_fitbit.csv")
+data$sleep_binary <- if_else(data$sleep_duration_hr > 7, 1, 0)
+str(data)
+```
+
+```{r}
+data %>%
+    group_by(id) %>%
+    summarise(n = n()) %>%
+    arrange(desc(n))
+```
+
 
 ## Model Setup
 
@@ -189,10 +208,186 @@ $$p(\beta, u, \sigma^2 | y, X) \propto \int p(y, \zeta, \beta, u, \sigma^2 | X) 
 
 This integration does not have a closed-form solution, so we would typically rely on a sampling algorithm, such as Markov Chain Monte Carlo (MCMC) methods, to estimate the posterior distribution and obtain parameter estimates.
 
-# Logistic Regression (Just for now)
+# Computing
 
 ```{r}
-# logistic regression using base R
-logit <- glm(sleep_binary ~ TotalSteps, data = data, family = binomial(link = "logit"))
-summary(logit)
+# Load required libraries
+library(MASS) # for multivariate normal functions
+library(coda) # for mcmc objects
+library(mcmcplots) # for mcmcplot
+library(truncnorm) # for truncated normal functions
+```
+
+```{r}
+# get the obs count per ID
+obs <- data %>%
+    group_by(id) %>%
+    summarise(n = n()) %>%
+    arrange(desc(n)) 
+
+obs
+```
+
+```{r}
+cols_to_remove <- c("id","date","sleep_duration_hr","sleep_binary")
+model_data <- data[,!(names(data) %in% cols_to_remove)]
+dim(model_data)
+head(model_data)
+```
+```{r}
+# use our data
+set.seed(123)
+IDs <- unique(data$id)
+N <- nrow(model_data)
+nGroups <- length(IDs)
+p <- ncol(model_data)
+X <- cbind(1, as.matrix(model_data))
+
+# design matrix D that maps the U random intercepts to the observations for each individual
+# D is a block diagonal matrix with nGroups blocks where each block has a vector of 1s of length n_i
+# for each individual i generate a matrix where the column i is a vector of 1s of length n_i
+# first creatre a matrix of 0s of size N x nGroups
+D <- matrix(0, N, nGroups)
+for (i in 1:nGroups) {
+  # column i is a vector of 1s of length n_i
+  # n_i is the number of observations for individual i
+  # determined using obs
+  n_i <- sum(data$id == IDs[i])
+  D[which(data$id == IDs[i]), i] <- rep(1, n_i)
+}
+
+y1 <- data$TotalMinutesAsleep # continuous outcome
+y <- data$sleep_binary # binary outcome
+```
+
+```{r}
+# Define prior parameters
+#prior_beta_mean <- rep(0, p)
+#prior_beta_cov <- diag(p)
+#prior_u_mean <- rep(0, nGroups)
+#prior_u_cov <- diag(nGroups)
+#prior_z_mean <- 0
+#prior_z_sd <- 1
+#prior_tau_shape <- 2
+#prior_tau_rate <- 1
+```
+
+```{r}
+# Number of iterations and burn-in
+niter <- 20000
+burnin <- 10000
+```
+
+```{r}
+# Initialize arrays to store samples
+beta_samples <- matrix(NA, nrow = niter, ncol = p+1)
+u_samples <- matrix(NA, nrow = niter, ncol = nGroups)
+tau_samples <- rep(NA, niter)
+z_samples <- matrix(NA, nrow = niter, ncol = N)
+```
+
+```{r}
+# Initialize starting values, which are matrices of 0s
+beta <- matrix(0, p, 1)
+u <- matrix(0, nGroups, 1)
+z <- matrix(0, N, 1)
+tau <- 1
+```
+
+```{r}
+# loop over the number of iterations
+for (i in 1:niter) {
+  # Sample beta using MVN
+  beta_mu <- solve(t(X) %*% X) %*% t(X) %*% (z - D %*% u)
+  beta_sigma <- solve(t(X) %*% X)
+  beta <- mvrnorm(n = 1, mu = beta_mu, Sigma = beta_sigma)
+
+  # Sample U using MVN
+  I <- diag(nGroups)
+  u_mu <- solve(t(D) %*% D + tau * I) %*% t(D) %*% (z - X %*% beta)
+  u_sigma <- solve(t(D) %*% D + tau * I)
+  u <- mvrnorm(n = 1, mu = u_mu, Sigma = u_sigma)
+
+  # Sample tau using gamma
+  tau_shape <- nGroups/2
+  tau_rate <- 1/2 * sqrt(sum(u^2))
+  tau <- rgamma(n = 1, shape = tau_shape, rate = tau_rate)
+
+  # sample z using truncated normal
+  z_sd = 1
+  z_mean = X %*% beta + D %*% u 
+  # TODO - how to condition on y? 
+  z <- if_else(y == 1, 
+    rtruncnorm(n = 1, a=0, b=Inf, mean = z_mean, sd = 1),
+    rtruncnorm(n = 1, a=-Inf, b=0, mean = z_mean, sd = 1))
+
+  # Store samples
+  beta_samples[i, ] <- beta
+  u_samples[i, ] <- u
+  z_samples[i, ] <- z
+  tau_samples[i] <- tau
+}
+```
+
+```{r}
+# Combine samples into an mcmc object
+tau_samples <- matrix(tau_samples)
+# first name the columns of each
+colnames(beta_samples) <- paste0("beta_", 1:(p+1))
+colnames(u_samples) <- paste0("u_", 1:nGroups)
+colnames(tau_samples) <- "tau"
+colnames(z_samples) <- paste0("z_", 1:N)
+samples <- cbind(beta_samples, u_samples, tau_samples, z_samples)
+samples_mcmc <- as.mcmc(samples[-(1:burnin), ]) # Remove burn-in samples
+```
+```{r}
+# Visualize convergence using mcmcplot for the betas and the u's
+mcmcplot(samples_mcmc[, c(colnames(beta_samples),colnames(u_samples), colnames(tau_samples))])
+```
+
+
+```{r}
+# Visualize posterior distributions
+var <- "beta_2"
+hist(samples_mcmc[, var], main = var)
+
+# get probability that beta_2 is greater than 0
+mean(samples_mcmc[, var] > 0)
+
+```
+
+```{r}
+beta_df <- as.data.frame(beta_samples)
+# get the 2.5%, 50%, and 97.5% quantiles, and the mean
+beta_quantiles <- apply(beta_df, 2, quantile, probs = c(0.025, 0.5, 0.975))
+beta_quantiles <- rbind(beta_quantiles, colMeans(beta_df))
+# name the rows
+rownames(beta_quantiles) <- c("2.5%", "50%", "97.5%", "mean")
+beta_quantiles
+```
+
+```{r}
+u_df <- as.data.frame(u_samples)
+# get the 2.5%, 50%, and 97.5% quantiles, and the mean
+u_quantiles <- apply(u_df, 2, quantile, probs = c(0.025, 0.5, 0.975))
+u_quantiles <- rbind(u_quantiles, colMeans(u_df))
+# name the rows
+rownames(u_quantiles) <- c("2.5%", "50%", "97.5%", "mean")
+u_quantiles
+```
+
+Convergence of the algorithm aside from inspection. 
+
+```{r}
+# Geweke diagnostic for the betas and the u's
+geweke_dig_data <- geweke.diag(samples_mcmc[, c(colnames(beta_samples),colnames(u_samples), colnames(tau_samples))])
+# get counts of cases where absolute value is larger than 2.58
+sum(abs(geweke_dig_data) > 2.58)
+```
+
+```{r}
+# Gelman-Rubin statistic
+# didn't do multiple chains
+# gelman_rubin_data <- gelman.diag(samples_mcmc)
+
 ```
