@@ -339,3 +339,22 @@ samples_mcmc <- as.mcmc(samples[-(1:burnin), ]) # Remove burn-in samples
 # Visualize convergence using mcmcplot
 mcmcplot(samples_mcmc)
 ```
+
+```{r}
+beta_df <- as.data.frame(beta_samples)
+summary(beta_df)
+```
+
+Convergence of the algorithm aside from inspection. 
+
+```{r}
+# Geweke diagnostic
+geweke_dig_data <- geweke.diag(samples_mcmc)
+```
+
+```{r}
+# Gelman-Rubin statistic
+# didn't do multiple chains
+# gelman_rubin_data <- gelman.diag(samples_mcmc)
+
+```
