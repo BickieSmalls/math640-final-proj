@@ -224,6 +224,8 @@ obs <- data %>%
     group_by(id) %>%
     summarise(n = n()) %>%
     arrange(desc(n)) 
+
+obs
 ```
 
 ```{r}
@@ -260,14 +262,14 @@ y <- data$sleep_binary # binary outcome
 
 ```{r}
 # Define prior parameters
-prior_beta_mean <- rep(0, p)
-prior_beta_cov <- diag(p)
-prior_u_mean <- rep(0, nGroups)
-prior_u_cov <- diag(nGroups)
-prior_z_mean <- 0
-prior_z_sd <- 1
-prior_tau_shape <- 2
-prior_tau_rate <- 1
+#prior_beta_mean <- rep(0, p)
+#prior_beta_cov <- diag(p)
+#prior_u_mean <- rep(0, nGroups)
+#prior_u_cov <- diag(nGroups)
+#prior_z_mean <- 0
+#prior_z_sd <- 1
+#prior_tau_shape <- 2
+#prior_tau_rate <- 1
 ```
 
 ```{r}
@@ -313,9 +315,12 @@ for (i in 1:niter) {
 
   # sample z using truncated normal
   z_sd = 1
-  z_mean = X %*% beta + D %*% u
-  z <- rtruncnorm(n = 1, a=-Inf, b=Inf, mean = 0, sd = 1)
-    
+  z_mean = X %*% beta + D %*% u 
+  # TODO - how to condition on y? 
+  z <- if_else(y == 1, 
+    rtruncnorm(n = 1, a=0, b=Inf, mean = z_mean, sd = 1),
+    rtruncnorm(n = 1, a=-Inf, b=0, mean = z_mean, sd = 1))
+
   # Store samples
   beta_samples[i, ] <- beta
   u_samples[i, ] <- u
@@ -338,6 +343,14 @@ samples_mcmc <- as.mcmc(samples[-(1:burnin), ]) # Remove burn-in samples
 ```{r}
 # Visualize convergence using mcmcplot
 mcmcplot(samples_mcmc)
+mcmcplot(samples_mcmc[, 1:5])
+```
+
+
+```{r}
+# Visualize posterior distributions
+var <- "u_1"
+hist(samples_mcmc[, var], main = var)
 ```
 
 ```{r}
