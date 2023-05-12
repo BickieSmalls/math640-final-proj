@@ -348,8 +348,31 @@ mcmcplot(samples_mcmc[, c(colnames(beta_samples),colnames(u_samples), colnames(t
 
 ```{r}
 # Visualize posterior distributions
-var <- "beta_2"
-hist(samples_mcmc[, var], main = var)
+# change the bins to 100
+# save plot to PNG
+# remove the z vars
+vars <- colnames(samples_mcmc)
+vars <- vars[!grepl("z", vars)]
+for (var in vars) {
+  print(var)
+  png(paste0("plots/",var,"_posterior_distributions.png"), width = 800, height = 800, res = 300)
+  hist(
+    samples_mcmc[, var], 
+    main = var,
+    xlab = var,
+    breaks = 100)
+
+  # add vertical line at 0, the mean, and the 2.5% and 97.5% quantiles
+  abline(v = 0, col = "red")
+  abline(v = mean(samples_mcmc[, var]), col = "blue")
+  # add box for 2.5 to 97.5 quantiles
+  box <- quantile(samples_mcmc[, var], probs = c(0.025, 0.975))
+  rect(box[1], 0, box[2], 1000, col = "blue", density = 20, angle = 45, border = NA)
+  dev.off()
+}
+```
+
+```{r}
 
 # get probability that beta_2 is greater than 0
 mean(samples_mcmc[, var] > 0)
