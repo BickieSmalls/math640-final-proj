@@ -274,8 +274,8 @@ y <- data$sleep_binary # binary outcome
 
 ```{r}
 # Number of iterations and burn-in
-niter <- 5000
-burnin <- 1000
+niter <- 20000
+burnin <- 10000
 ```
 
 ```{r}
@@ -341,28 +341,48 @@ samples <- cbind(beta_samples, u_samples, tau_samples, z_samples)
 samples_mcmc <- as.mcmc(samples[-(1:burnin), ]) # Remove burn-in samples
 ```
 ```{r}
-# Visualize convergence using mcmcplot
-mcmcplot(samples_mcmc)
-mcmcplot(samples_mcmc[, 1:5])
+# Visualize convergence using mcmcplot for the betas and the u's
+mcmcplot(samples_mcmc[, c(colnames(beta_samples),colnames(u_samples), colnames(tau_samples))])
 ```
 
 
 ```{r}
 # Visualize posterior distributions
-var <- "u_1"
+var <- "beta_2"
 hist(samples_mcmc[, var], main = var)
+
+# get probability that beta_2 is greater than 0
+mean(samples_mcmc[, var] > 0)
+
 ```
 
 ```{r}
 beta_df <- as.data.frame(beta_samples)
-summary(beta_df)
+# get the 2.5%, 50%, and 97.5% quantiles, and the mean
+beta_quantiles <- apply(beta_df, 2, quantile, probs = c(0.025, 0.5, 0.975))
+beta_quantiles <- rbind(beta_quantiles, colMeans(beta_df))
+# name the rows
+rownames(beta_quantiles) <- c("2.5%", "50%", "97.5%", "mean")
+beta_quantiles
+```
+
+```{r}
+u_df <- as.data.frame(u_samples)
+# get the 2.5%, 50%, and 97.5% quantiles, and the mean
+u_quantiles <- apply(u_df, 2, quantile, probs = c(0.025, 0.5, 0.975))
+u_quantiles <- rbind(u_quantiles, colMeans(u_df))
+# name the rows
+rownames(u_quantiles) <- c("2.5%", "50%", "97.5%", "mean")
+u_quantiles
 ```
 
 Convergence of the algorithm aside from inspection. 
 
 ```{r}
-# Geweke diagnostic
-geweke_dig_data <- geweke.diag(samples_mcmc)
+# Geweke diagnostic for the betas and the u's
+geweke_dig_data <- geweke.diag(samples_mcmc[, c(colnames(beta_samples),colnames(u_samples), colnames(tau_samples))])
+# get counts of cases where absolute value is larger than 2.58
+sum(abs(geweke_dig_data) > 2.58)
 ```
 
 ```{r}
